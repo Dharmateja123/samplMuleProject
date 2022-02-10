@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3db49ef5-92d4-47c2-9b4a-6e5ec8dda5db" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<flow name="sample1Flow" doc:id="f8a559ca-eb6a-4a64-b709-d82454803fbb" >
+		<http:listener doc:name="Listener" doc:id="65363147-2045-4e11-959b-4f16317880e8" config-ref="HTTP_Listener_config" path="/orders" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="01e00f97-cfef-4648-afa0-dfae18e2dd8d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+lookup("additem",{payload:{itemname:payload.name,
+		itemprice:payload.price}})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="additem" doc:id="8d82580b-516b-4b3e-9e1a-a9029211ae17" >
+		<set-payload value='#[%dw 2.0
+output application/json
+---
+payload]' doc:name="Set Payload" doc:id="03efa794-588e-4946-b6a7-b88c805174e0" />
+	</flow>
+	<flow name="sample1Flow1" doc:id="b051eec8-54ce-4c78-855b-64501558c97e" >
+		<http:listener doc:name="Listener" doc:id="d3f26b81-b3fd-47e7-8663-05b2d0ba5fc5" config-ref="HTTP_Listener_config" path="/simpleorder"/>
+		<set-payload value='#["listener"]' doc:name="Set Payload" doc:id="d6196ebb-fefe-491b-9b14-cf888c667733" />
+		<http:request method="GET" doc:name="Request" doc:id="a5721efc-d903-4e80-9f71-ded7d1b0c19a" config-ref="HTTP_Request_configuration" path="/childrequest" target="result"/>
+		<logger level="INFO" doc:name="Logger" doc:id="920ea24d-5702-4a86-ab2d-e23d54ea1b0e" message="#[payload]"/>
+	</flow>
+	<flow name="sample1Flow3" doc:id="944613e0-6395-45b8-b2bf-6c6fbb1ece12" >
+		<http:listener doc:name="Listener" doc:id="77f9a4c4-87a6-4345-81ee-e8fe64650c8c" config-ref="HTTP_Listener_config" path="/batch"/>
+		<set-payload value="#[['a','b','c','d','e']]" doc:name="Set Payload" doc:id="3eb85da1-b34e-461c-901e-9e8e274c4f2c" />
+		<batch:job jobName="sample1Batch_Job" doc:id="c6da5f8c-48c2-417c-977d-5a29e6dee43a" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="53c74dcd-7654-432d-83d7-673d5109fd44" acceptExpression='#[not (payload contains "b")]'>
+					<ee:transform doc:name="Transform Message" doc:id="dca6f054-4705-48a9-8ece-b3b0d4c44e1f" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+upper(payload)]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="62d2d171-2812-4596-ad9c-1c48ca70de35" size="3">
+						<logger level="INFO" doc:name="Logger" doc:id="765f7a1f-aabc-4866-a54d-f9590cb1eb68" message="#[output application/json --- payload]"/>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="5a28e94a-0787-408a-aee6-b40c0110d8c5" />
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+	<flow name="sample1Flow4" doc:id="7c08e16c-7a7e-44db-ab02-5e3dee442ed6" >
+		<http:listener doc:name="Listener" doc:id="6d28e24a-c3b6-453e-b773-08b03d70cba6" config-ref="HTTP_Listener_config" path="/foreach"/>
+		<set-payload value="#[[1,2,3,4]]" doc:name="Set Payload" doc:id="e7935aac-2a6e-4383-81ea-1dd545a30178" />
+		<set-variable value="10" doc:name="Set Variable" doc:id="fce42265-588a-4ef2-a286-00ba52ab0604" variableName="quantity"/>
+		<foreach doc:name="For Each" doc:id="2dc279bd-9d52-44dc-857b-6e4c6cd89c73" >
+			<set-payload value='#["order" ++ payload]' doc:name="Set Payload" doc:id="d7919699-ab4a-4ed0-a676-9dd674ff7116" />
+			<set-variable value="#[vars.quantity + 1]" doc:name="Set Variable" doc:id="1308ee4f-5a0b-42b6-b673-3a1a65c84ced" variableName="quantity+1"/>
+			<logger level="INFO" doc:name="Logger" doc:id="3d9d5527-417f-4d2c-964a-5878430b3e78" message="#[[payload,vars.quantity+1]]"/>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="cd8fcf11-131c-4506-8995-6d7527a66aef" message="#[[payload,vars.quantity]]"/>
+	</flow>
+	<flow name="sample1Flow2" doc:id="d0ff0a85-e9a0-4f92-aec5-eeb156751d7e" >
+		<http:listener doc:name="Listener" doc:id="9045c28a-61fa-4c44-9ea3-d3cdac23ce1d" config-ref="HTTP_Listener_config" path="/batchrequest"/>
+		<batch:job jobName="sample1Batch_Job1" doc:id="0a5de36a-d58f-4031-973a-8582c066e887" >
+			<batch:process-records >
+				<batch:step name="Batch_Step1" doc:id="93a2bcdc-508a-486a-8148-690961afd254" acceptExpression="#[payload.amount &lt; 500]" acceptPolicy="ALL">
+					<set-payload value='#[{"amount":payload.amount + 100}]' doc:name="Set Payload" doc:id="93ec1fca-2346-4859-82c8-091fcc010cb7" />
+					<logger level="INFO" doc:name="Logger" doc:id="f468696c-5980-4ed5-97ca-0353133f7228" message="#[payload]"/>
+				</batch:step>
+				<batch:step name="Batch_Step2" doc:id="e5911e17-7551-4b2e-8eb3-217313fea674" acceptExpression="#[payload.amount &gt;200]" acceptPolicy="ALL">
+					<set-payload value='#[{"step2amount":payload.amount}]' doc:name="Set Payload" doc:id="8b5a7d84-5d12-48f5-bca6-a1827477ddc4" />
+					<logger level="INFO" doc:name="Logger" doc:id="86c69741-6226-4630-a703-71cbcb5f884b" message="#[payload]"/>
+				</batch:step>
+			</batch:process-records>
+		</batch:job>
+	</flow>
+</mule>
