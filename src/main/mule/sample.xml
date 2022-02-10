@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="c1b7e03e-21fe-4ffd-b44b-8b6f49b1563c" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="sampleFlow" doc:id="b8b28b83-9c52-4d67-9a87-1680b24a97a5" >
+		<http:listener doc:name="Listener" doc:id="003b5c9f-1944-49b1-a6af-76067e35b5aa" config-ref="HTTP_Listener_config" path="/test">
+			<http:response statusCode="200" reasonPhrase="Ok" />
+		</http:listener>
+		<try doc:name="Try" doc:id="aa914207-e259-45ca-bc7c-8109c60eb46b" >
+			<validation:is-number numberType="INTEGER" doc:name="Is number" doc:id="a104399f-ddec-4182-ab79-748a3447f487" value="#[payload.id]" message="please enter numbers only" />
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="7306c48a-73be-4125-9965-01f330d1489e" type="ANY">
+					<logger level="INFO" doc:name="Logger" doc:id="62f0bad2-a3d9-47f5-9121-e7283eca226b" message="error at try scope"/>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="1a863046-c87b-4df9-b6fd-37a0801e78c0" message="#[payload]"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="8a5e96ba-9c90-4bb8-a0a4-99d089f68b5a" type="ANY">
+				<logger level="INFO" doc:name="Logger" doc:id="a4ecc556-f42d-465c-a143-a279129f522d" message="error at flow level"/>
+				<ee:transform doc:name="Transform Message" doc:id="3fc9e28b-8ebc-4317-b697-cad2063baa20">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+message: error.errorMessage]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="sampleFlow1" doc:id="90b78274-966e-4100-a3fc-364d8d0d5038" >
+		<http:listener doc:name="Listener" doc:id="2ea7decb-3212-4bb5-b37a-1865f555d2ef" config-ref="HTTP_Listener_config" path="/colour" outputMimeType="application/json" allowedMethods="PUT"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="5a3d3927-5ecc-4432-b324-fcf355360ee8" />
+		<choice doc:name="Choice" doc:id="99885213-3acd-4f6e-a676-e08cd1ffa06e" >
+			<when expression='#[payload contains "red"]'>
+				<set-payload value='#["blk"]' doc:name="blk" doc:id="6b98268a-7e76-4fd1-afb3-88c1a0170ea9" />
+			</when>
+			<when expression='#[payload contains "blk"]'>
+				<set-payload value='#["green"]' doc:name="green" doc:id="ea45bad5-7208-44d8-9d94-aa5170cdcdfb" />
+			</when>
+			<otherwise >
+				<set-payload value='#["red"]' doc:name="red" doc:id="416214fa-7ac6-49d7-8df9-01b9358b52f6" />
+				<flow-ref doc:name="Flow Reference" doc:id="99c2afdb-2eee-4359-b500-9e80b3fe8db9" name="sampleFlow1"/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="sampleFlow2" doc:id="27a8d2b1-7738-478c-b0fc-01ec22146a7c" >
+		<http:listener doc:name="Listener" doc:id="9b5c9199-922d-4f47-bf5a-7e6df55849b4" config-ref="HTTP_Listener_config" path="/empty"/>
+		<ee:transform doc:name="Transform Message" doc:id="acd952dd-d4bf-4bd2-b167-5844b02ad2b3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	msg:"hello"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="3383f7c8-a184-4271-aa21-d779fc4181d8" name="emptyflow" target="childresult"/>
+		<logger level="INFO" doc:name="Logger" doc:id="dae316c6-b858-46e0-aa6d-38938b87bd27" message="#[payload]"/>
+	</flow>
+	<flow name="emptyflow" doc:id="d2cdde0c-3e80-4705-8cf5-1c70bc3c3e13" >
+		<ee:transform doc:name="Transform Message" doc:id="f56af451-9e44-4c2c-9422-56a5b8f14380" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+{res:payload}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
