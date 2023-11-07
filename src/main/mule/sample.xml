@@ -60,7 +60,7 @@ message: error.errorMessage]]></ee:set-payload>
 output application/json
 ---
 {
-	msg:"hello"
+	msg:"hi"
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
